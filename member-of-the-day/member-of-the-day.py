@@ -67,4 +67,12 @@ async def on_ready():
     scheduler.start()
     print(f"Harmonogram uruchomiony! Losowanie codziennie o godzinie {HOUR}:{MINUTE} UTC.")
 
+def run_dummy_server():
+       PORT = int(os.getenv("PORT", 8080))
+       handler = http.server.SimpleHTTPRequestHandler
+       with socketserver.TCPServer(("", PORT), handler) as httpd:
+           httpd.serve_forever()
+
+   threading.Thread(target=run_dummy_server, daemon=True).start()
+
 bot.run(TOKEN)

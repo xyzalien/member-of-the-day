@@ -53,7 +53,7 @@ async def losowanie_uzytkownika():
         try:
             await zwyciezca.add_roles(role)
             if channel:
-                await channel.send(f"🎉 Gratulacje {zwyciezca.mention}! Zostałeś wylosowany na użytkownika dnia i otrzymujesz rangę **{role.name}** na najbliższe 24 godziny!")
+                await channel.send(f"Gratulacje {zwyciezca.mention} zostajesz cwelem dnia!")
             print(f"Wylosowano użytkownika: {zwyciezca.name}")
         except Exception as e:
             print(f"Błąd podczas nadawania roli/wysyłania wiadomości: {e}")

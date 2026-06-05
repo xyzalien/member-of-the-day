@@ -3,6 +3,9 @@ from discord.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import random
 import os
+import http.server
+import socketserver
+import threading
 
 # Bot automatycznie pobiera zmienne, które już wpisałeś w Renderze!
 TOKEN = os.getenv('token')

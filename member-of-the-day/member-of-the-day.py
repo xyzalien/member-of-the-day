@@ -1,113 +1,67 @@
-# Member of the Day: Main File
-# Written by: Dylan Hebert (The Green Donut)
-# Bot permissions: 268545040
-#
-
 import discord
 from discord.ext import commands
-import datetime
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import random
 import os
-import sys, traceback
-from conf.logger import logger
-import data.motd_times as rt
-import conf.funcs as fs
-import time
-import asyncio
 
-botInfo = open("_bot_info.txt", "r")
-botToken = botInfo.readline()
+# Bot automatycznie pobiera zmienne, które już wpisałeś w Renderze!
+TOKEN = os.getenv('token')
+GUILD_ID = int(os.getenv('guild'))
+ROLE_ID = int(os.getenv('role'))
+CHANNEL_ID = int(os.getenv('channel'))
+TIME_STR = os.getenv('time', '15:00') # np. "15:00"
 
-# new for discord.py 1.5
+# Wyciąganie godziny i minuty ze zmiennej time
+try:
+    HOUR, MINUTE = map(int, TIME_STR.split(':'))
+except:
+    HOUR, MINUTE = 15, 0
+
 intents = discord.Intents.default()
-intents.members = True
-intents.presences = True
+intents.members = True 
+bot = commands.Bot(command_prefix="!", intents=intents)
+scheduler = AsyncIOScheduler()
 
-#gavinRoleColor = discord.Color(0x62dbff)
+async def losowanie_uzytkownika():
+    guild = bot.get_guild(GUILD_ID)
+    if not guild:
+        print(f"Nie znaleziono serwera o ID {GUILD_ID}")
+        return
+        
+    role = guild.get_role(ROLE_ID)
+    channel = bot.get_channel(CHANNEL_ID)
+    
+    if not role:
+        print(f"Nie znaleziono roli o ID {ROLE_ID}")
+        return
 
-# set prefix
-def get_prefix(bot, message):
-    prefixes = ['!']
-    if not message.guild:
-        return '!'
-    return commands.when_mentioned_or(*prefixes)(bot, message)
-
-# create bot object
-bot = commands.Bot( command_prefix = get_prefix, 
-                    description = 'Member of the Day by Green Donut',
-                    pm_help = True,
-                    intents=intents)
-gamePlaying = discord.Game(name='!vote | !score')
-# gamePlaying = discord.Streaming(name='!vote | !score',
-#                                 url='https://www.twitch.tv/thegreendonut')
-
-# define extensions
-#cogsLoc = '/home/pi/code_pi/gavinbot/cogs/'
-initial_extensions =    [
-                        'cogs.motd_cmds',
-                        'cogs.motd_looper'
-                        ]
-
-# load extensions
-if __name__ == '__main__':
-    for extension in initial_extensions:
+    # 1. Reset poprzedniej roli
+    for member in role.members:
         try:
-            bot.load_extension(extension)
-            logger.info(f'Loaded extension {extension}.')
+            await member.remove_roles(role)
         except Exception as e:
-            logger.warning(f'Failed to load extension {extension}.')
-            traceback.print_exc()
+            print(f"Nie udało się odebrać roli użytkownikowi {member.name}: {e}")
 
-# bot main start
+    # 2. Losowanie nowego użytkownika
+    czlonkowie = [m for m in guild.members if not m.bot]
+    
+    if czlonkowie:
+        zwyciezca = random.choice(czlonkowie)
+        try:
+            await zwyciezca.add_roles(role)
+            if channel:
+                await channel.send(f"🎉 Gratulacje {zwyciezca.mention}! Zostałeś wylosowany na użytkownika dnia i otrzymujesz rangę **{role.name}** na najbliższe 24 godziny!")
+            print(f"Wylosowano użytkownika: {zwyciezca.name}")
+        except Exception as e:
+            print(f"Błąd podczas nadawania roli/wysyłania wiadomości: {e}")
+    else:
+        print("Brak użytkowników do wylosowania.")
+
 @bot.event
 async def on_ready():
-    logger.info(f'\n** BOT STARTED: {bot.user.name} - {bot.user.id} **')
-    # gather run times from server db
-    rt.runTimesInit()
-    await bot.change_presence(activity = gamePlaying)
+    print(f'Zalogowano pomyślnie jako: {bot.user.name}')
+    scheduler.add_job(losowanie_uzytkownika, 'cron', hour=HOUR, minute=MINUTE)
+    scheduler.start()
+    print(f"Harmonogram uruchomiony! Losowanie codziennie o godzinie {HOUR}:{MINUTE} UTC.")
 
-# --- ERROR & COOLDOWN RESPONSES
-@bot.event
-async def on_command_error(ctx, error):
-    channel = ctx.message.channel
-    await channel.send(error)
-    if isinstance(error, commands.errors.CommandNotFound):
-        pass
-    if isinstance(error, commands.errors.CommandOnCooldown):
-	    pass
-
-### BOT JOINS SERVER ###
-@bot.event
-async def on_guild_join(guild):
-    sysChan = False
-    if guild.system_channel != None:
-        sysChan = True
-        await guild.system_channel.send(f'Thanks for having me, {guild.name}\n'
-                                'Use **!MOTDhelp** to learn how to start Member of the Day\n'
-                                'Use **!help** to get a list of all my functions')  
-    logger.info('\n---------------------------------------\n'
-            f'Joined {guild.name} with {guild.member_count} users!\n'
-            f' System channel = {sysChan}\n'
-            '---------------------------------------')
-    await asyncio.sleep(1)
-    botRole = discord.utils.get(guild.roles, name='MOTD Bot')
-    await fs.addServerDB(guild.id,guild.name,botRole.id)
-    if guild.system_channel != None:
-        await guild.system_channel.send(f'Move my role ({botRole.mention}) above all hoisted roles to use Member of the Day!')
-
-### BOT LEAVES SERVER ###
-@bot.event
-async def on_guild_remove(guild):
-    serverEntry = await fs.getServerEntry(fs.serverPath,guild.id)
-    # delete server run time in rt.runTimes
-    delRuntime = serverEntry['timeStart']
-    # only try to delete run time if its not None in db
-    if delRuntime != None:
-        if delRuntime in rt.runTimes:
-            rt.runTimesDel(delRuntime)
-            pass
-    # delete server from DBs
-    await fs.delServerDB(guild.id,guild.name)
-    logger.info(f'\nServer List DB update: bot removed from {guild.name} | {guild.id}\n')
-      
-
-bot.run(botToken, bot=True)
+bot.run(TOKEN)

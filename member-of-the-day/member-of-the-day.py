@@ -7,12 +7,12 @@ import http.server
 import socketserver
 import threading
 
-# Bot automatycznie pobiera zmienne, które już wpisałeś w Renderze!
+# Bot automatycznie pobiera zmienne z Rendera
 TOKEN = os.getenv('token')
 GUILD_ID = int(os.getenv('guild'))
 ROLE_ID = int(os.getenv('role'))
 CHANNEL_ID = int(os.getenv('channel'))
-TIME_STR = os.getenv('time', '15:00') # np. "15:00"
+TIME_STR = os.getenv('time', '15:00')
 
 # Wyciąganie godziny i minuty ze zmiennej time
 try:
@@ -67,12 +67,13 @@ async def on_ready():
     scheduler.start()
     print(f"Harmonogram uruchomiony! Losowanie codziennie o godzinie {HOUR}:{MINUTE} UTC.")
 
+# Specjalny serwer portu dla platformy Render (musi być idealnie sformatowany bez wcięć)
 def run_dummy_server():
-       PORT = int(os.getenv("PORT", 8080))
-       handler = http.server.SimpleHTTPRequestHandler
-       with socketserver.TCPServer(("", PORT), handler) as httpd:
-           httpd.serve_forever()
+    PORT = int(os.getenv("PORT", 8080))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), handler) as httpd:
+        httpd.serve_forever()
 
-   threading.Thread(target=run_dummy_server, daemon=True).start()
+threading.Thread(target=run_dummy_server, daemon=True).start()
 
 bot.run(TOKEN)

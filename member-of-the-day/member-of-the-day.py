@@ -14,7 +14,6 @@ ROLE_ID = int(os.getenv('role'))
 CHANNEL_ID = int(os.getenv('channel'))
 TIME_STR = os.getenv('time', '15:00')
 
-# Wyciąganie godziny i minuty ze zmiennej time
 try:
     HOUR, MINUTE = map(int, TIME_STR.split(':'))
 except:
@@ -38,7 +37,15 @@ async def losowanie_uzytkownika():
         print(f"Nie znaleziono roli o ID {ROLE_ID}")
         return
 
-    # 1. Reset poprzedniej roli
+    # --- ZABEZPIECZENIE PRZED POTRÓJNYM LOSOWANIEM ---
+    # Sprawdzamy, czy ktoś aktualnie posiada już tę rolę. 
+    # Jeśli rola ma już przypisanego członka, oznacza to, że inna kopia bota właśnie wykonała losowanie.
+    if len(role.members) > 0:
+        print("Losowanie na dziś zostało już wykonane przez inną instancję bota. Przerywam.")
+        return
+    # ------------------------------------------------
+
+    # 1. Reset poprzedniej roli (na wypadek, gdyby bot startował po całkowitym czyszczeniu ręcznym)
     for member in role.members:
         try:
             await member.remove_roles(role)
@@ -67,7 +74,7 @@ async def on_ready():
     scheduler.start()
     print(f"Harmonogram uruchomiony! Losowanie codziennie o godzinie {HOUR}:{MINUTE} UTC.")
 
-# Specjalny serwer portu dla platformy Render (musi być idealnie sformatowany bez wcięć)
+# Specjalny serwer portu dla platformy Render
 def run_dummy_server():
     PORT = int(os.getenv("PORT", 8080))
     handler = http.server.SimpleHTTPRequestHandler

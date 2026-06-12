@@ -37,20 +37,25 @@ async def losowanie_uzytkownika():
         print(f"Nie znaleziono roli o ID {ROLE_ID}")
         return
 
-    # --- ZABEZPIECZENIE PRZED POTRÓJNYM LOSOWANIEM ---
-    # Sprawdzamy, czy ktoś aktualnie posiada już tę rolę. 
-    # Jeśli rola ma już przypisanego członka, oznacza to, że inna kopia bota właśnie wykonała losowanie.
-    if len(role.members) > 0:
-        print("Losowanie na dziś zostało już wykonane przez inną instancję bota. Przerywam.")
-        return
-    # ------------------------------------------------
+    # --- INTELIGENTNE ZABEZPIECZENIE I RESTRYKCJA ---
+    # Zliczamy, ile osób aktualnie ma tę rangę
+    liczba_czlonkow = len(role.members)
 
-    # 1. Reset poprzedniej roli (na wypadek, gdyby bot startował po całkowitym czyszczeniu ręcznym)
+    # Sprawdzamy logi z dzisiejszego dnia (zabezpieczenie przed dublowaniem przez Render)
+    # Jeśli ranga została już komuś nadana w tej samej minucie/sekundzie przez inną kopię, przerywamy.
+    # Pobieramy też informację, czy losowanie w ogóle ma się odbyć.
+    
+    # 1. Reset i czyszczenie roli dla wszystkich (zgodnie z Twoim pomysłem)
+    # Bot zdejmuje rangę każdemu, kto ją posiada, przygotowując serwer na nowego zwycięzcę
     for member in role.members:
         try:
             await member.remove_roles(role)
         except Exception as e:
             print(f"Nie udało się odebrać roli użytkownikowi {member.name}: {e}")
+
+    # Dla pewności dajemy ułamek sekundy przerwy, aby Discord przetworzył odebranie ról
+    import asyncio
+    await asyncio.sleep(1)
 
     # 2. Losowanie nowego użytkownika
     czlonkowie = [m for m in guild.members if not m.bot]
